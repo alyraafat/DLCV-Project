@@ -172,3 +172,11 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+
+# Custom files
+vids/
+output_frames/
+*.jpg
+*.png
+*.mp4
