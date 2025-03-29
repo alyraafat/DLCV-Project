@@ -180,3 +180,4 @@ output_frames/
 *.jpg
 *.png
 *.mp4
+*.pt
