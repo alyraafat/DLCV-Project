@@ -182,3 +182,6 @@ output_frames/
 *.jpeg
 *.mp4
 *.pt
+
+
+data/
