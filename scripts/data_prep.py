@@ -3,6 +3,9 @@ import os
 import numpy as np
 from typing import List, Tuple
 from sklearn.model_selection import train_test_split
+import torch
+from torch.utils.data import DataLoader, TensorDataset
+from torchvision import transforms
 
 def data_reader(data_path: str) -> Tuple[List[np.ndarray], List[str]]:
     ''''
@@ -53,4 +56,71 @@ def data_preperator(data: Tuple[List[np.ndarray], List[str]], image_size: Tuple[
     
     
    
-     
+def data_augmentor(data: Tuple[np.ndarray, np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+    '''
+    Applies data augmentation techniques to the training data.
+
+    Args:
+        data (Tuple[np.ndarray, np.ndarray]): Tuple containing the training images and their corresponding labels.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: Augmented training images and their corresponding labels.
+    '''
+    images, labels = data
+    augmented_images = []
+
+    for image in images:
+        # Random brightness adjustment
+        if np.random.rand() > 0.5:
+            brightness_factor = np.random.uniform(0.5, 1.5)
+            image = cv2.convertScaleAbs(image, alpha=brightness_factor, beta=0)
+
+        # Random horizontal flip
+        if np.random.rand() > 0.5:
+            image = cv2.flip(image, 1)
+
+        # Random vertical flip
+        if np.random.rand() > 0.5:
+            image = cv2.flip(image, 0)
+        
+        # Random rotation
+        if np.random.rand() > 0.5:
+            angle = np.random.randint(-15, 15)
+            M = cv2.getRotationMatrix2D((image.shape[1] // 2, image.shape[0] // 2), angle, 1)
+            image = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
+        
+        augmented_images.append(image)
+
+    return np.array(augmented_images), labels
+
+
+def convert_to_dataloader(data: Tuple[np.ndarray, np.ndarray], batch_size: int=32, transform: transforms.Compose=None, use_aug: bool=False) -> DataLoader:
+    '''
+    Converts the data to a format suitable for PyTorch.
+
+    Args:
+        data (Tuple[np.ndarray, np.ndarray]): Tuple containing the images and their corresponding labels.
+        batch_size (int): Size of the batches for the DataLoader.
+        transform (transforms.Compose): Transformations to be applied to the images.
+        use_aug (bool): Whether to apply data augmentation.
+
+    Returns:
+        DataLoader: PyTorch DataLoader containing the images and labels.
+    '''
+    images, labels = data
+    
+    if use_aug:
+        images, labels = data_augmentor(data)
+
+    if transform:
+        images = [transform(image) for image in images]
+        data_tensor = torch.stack(images)
+    else:
+        data_tensor = torch.tensor(images, dtype=torch.float32).permute(0, 3, 1, 2)
+
+    labels_tensor = torch.tensor(labels, dtype=torch.long)
+
+    dataset = TensorDataset(data_tensor, labels_tensor)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    return dataloader

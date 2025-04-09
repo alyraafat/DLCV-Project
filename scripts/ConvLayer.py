@@ -78,7 +78,8 @@ class ConvLayer:
                     w_start = w
                     w_end = w_start + kernel_w
                     region = input_data[h_start:h_end, w_start:w_end, :]
-                    output[h, w, f] = np.sum(region * self.filters[f])
+                    # print(f"Region shape: {region.shape}, Filter shape: {self.filters[f].shape}")
+                    output[h, w, f] = np.sum(region * np.expand_dims(self.filters[f],axis=-1))
         return output
     
     def forward(self, input_data: np.ndarray) -> np.ndarray:

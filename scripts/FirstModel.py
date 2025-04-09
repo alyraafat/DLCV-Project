@@ -2,9 +2,9 @@ from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import numpy as np
 from typing import List, Tuple
-from ConvLayer import ConvLayer
-from PoolingLayer import PoolingLayer
-from FlattenLayer import FlattenLayer
+from .ConvLayer import ConvLayer
+from .PoolingLayer import PoolingLayer
+from .FlattenLayer import FlattenLayer
 from tqdm import tqdm
 
 class FirstModel:
@@ -50,8 +50,9 @@ class FirstModel:
                 x = conv.forward(x)
                 x = pool.forward(x)
             flat = self.flatten.forward(x)
-            print(f"Flattened shape: {flat.shape}")
+            # print(f"Flattened shape: {flat.shape}")
             downsized = self._downsample(flat)
+            # print(f"Downsized shape: {downsized.shape}")
             feature_vectors.append(downsized)
 
         return np.array(feature_vectors)
