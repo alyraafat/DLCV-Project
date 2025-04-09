@@ -66,7 +66,7 @@ class FirstModel:
         self.kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init=10)
         self.kmeans.fit(features)
     
-    def fit(self, images: List[np.ndarray], num_clusters: int = 4):
+    def fit(self, images: List[np.ndarray], num_clusters: int = 5):
         '''
         Extracts features from images and fits KMeans.
         '''

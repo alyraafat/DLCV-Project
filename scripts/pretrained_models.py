@@ -2,7 +2,7 @@ import torchvision.models as models
 from torch import nn
 from torchvision import transforms
 
-def get_pretrained_model(model_name: str="resnet18", num_classes: int=4) -> nn.Module:
+def get_pretrained_model(model_name: str="resnet18", num_classes: int=5) -> nn.Module:
     """
     Load a pretrained model and modify the final layer to match the number of classes.
 

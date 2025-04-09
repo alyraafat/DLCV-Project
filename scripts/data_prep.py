@@ -1,11 +1,12 @@
 import cv2 
 import os 
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms
+
 
 def data_reader(data_path: str) -> Tuple[List[np.ndarray], List[str]]:
     ''''
@@ -30,7 +31,7 @@ def data_reader(data_path: str) -> Tuple[List[np.ndarray], List[str]]:
     
 
 
-def data_preperator(data: Tuple[List[np.ndarray], List[str]], image_size: Tuple[int, int] = (512, 512)) -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+def data_preperator(data: Tuple[List[np.ndarray], List[str]], image_size: Tuple[int, int] = (512, 512)) -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Dict[str, int]]:
     '''
     Prepares the data for training by resizing images and converting labels to one-hot encoding.
 
@@ -39,11 +40,12 @@ def data_preperator(data: Tuple[List[np.ndarray], List[str]], image_size: Tuple[
         image_size (Tuple[int, int]): Desired size for the images after resizing.
 
     Returns:
-        Tuple[np.ndarray, np.ndarray]: Tuple containing the preprocessed images and their corresponding labels.
+        Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Dict[str, int]]: 
+        Tuple containing training data, validation data, test data, and a mapping of labels to indices.
     '''
     images, labels = data
     images_resized_normalized = [cv2.resize(image, image_size) / 255.0 for image in images]
-    images_array = np.array(images_resized_normalized)
+    images_array = np.array(images_resized_normalized, dtype=np.float32)
     
     unique_labels = sorted(list(set(labels)))
     label_to_index = {label: index for index, label in enumerate(unique_labels)}
@@ -52,7 +54,7 @@ def data_preperator(data: Tuple[List[np.ndarray], List[str]], image_size: Tuple[
     X_train, X_temp, y_train, y_temp = train_test_split(images_array, labels_encoded, test_size=0.3, random_state=42, stratify=labels_encoded)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, train_size=2/3, random_state=42, stratify=y_temp)
 
-    return (X_train, y_train), (X_val, y_val), (X_test, y_test)
+    return (X_train, y_train), (X_val, y_val), (X_test, y_test), label_to_index
     
     
    
@@ -72,8 +74,8 @@ def data_augmentor(data: Tuple[np.ndarray, np.ndarray]) -> Tuple[np.ndarray, np.
     for image in images:
         # Random brightness adjustment
         if np.random.rand() > 0.5:
-            brightness_factor = np.random.uniform(0.5, 1.5)
-            image = cv2.convertScaleAbs(image, alpha=brightness_factor, beta=0)
+            brightness_factor = np.random.uniform(0.9,1.1)
+            image = np.clip(image * brightness_factor, 0.0, 1.0)
 
         # Random horizontal flip
         if np.random.rand() > 0.5:

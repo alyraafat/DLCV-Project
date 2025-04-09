@@ -1,7 +1,7 @@
 from torch import nn
 
 class SecondModel(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes: int=5):
         super(SecondModel, self).__init__()
         
         # Layer 1 , 32 filters each is 3x3, ReLU activation, MaxPooling
@@ -42,7 +42,7 @@ class SecondModel(nn.Module):
         self.sigmoid = nn.Sigmoid()        
 
         # Output layer with 4 neurons and softmax activation
-        self.fc2 = nn.LazyLinear(4)
+        self.fc2 = nn.LazyLinear(num_classes)
         self.softmax = nn.Softmax(dim=1)
         
     def forward(self, x):
