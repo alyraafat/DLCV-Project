@@ -44,15 +44,42 @@ def data_preperator(data: Tuple[List[np.ndarray], List[str]], image_size: Tuple[
         Tuple containing training data, validation data, test data, and a mapping of labels to indices.
     '''
     images, labels = data
-    images_resized_normalized = [cv2.resize(image, image_size) / 255.0 for image in images]
-    images_array = np.array(images_resized_normalized, dtype=np.float32)
     
     unique_labels = sorted(list(set(labels)))
     label_to_index = {label: index for index, label in enumerate(unique_labels)}
     labels_encoded = np.array([label_to_index[label] for label in labels])
     
-    X_train, X_temp, y_train, y_temp = train_test_split(images_array, labels_encoded, test_size=0.3, random_state=42, stratify=labels_encoded)
-    X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, train_size=2/3, random_state=42, stratify=y_temp)
+    idx = np.arange(len(images))
+    train_idx, temp_idx, y_train, y_temp = train_test_split(
+        idx, labels_encoded,
+        test_size=0.30,
+        random_state=42,
+        stratify=labels_encoded
+    )
+    val_idx, test_idx, y_val, y_test = train_test_split(
+        temp_idx, y_temp,
+        train_size=2/3,
+        random_state=42,
+        stratify=y_temp
+    )
+
+    def build_subset(idxs: List[int]) -> np.ndarray:
+        '''
+        Builds a subset of images based on the provided indices.
+
+        Args:
+            idxs (List[int]): List of indices to select images from.
+        
+        Returns:
+            np.ndarray: Array of images resized to the specified image size.
+        '''
+        
+        X = np.array([cv2.resize(images[i], image_size) / 255.0 for i in idxs], dtype=np.float32)
+        return X
+    
+    X_train = build_subset(train_idx)
+    X_val = build_subset(val_idx)
+    X_test = build_subset(test_idx)
 
     return (X_train, y_train), (X_val, y_val), (X_test, y_test), label_to_index
     
