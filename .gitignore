@@ -187,3 +187,5 @@ output_frames/
 data/
 *.txt
 *.zip
+
+/models/

@@ -123,7 +123,7 @@ def data_augmentor(data: Tuple[np.ndarray, np.ndarray]) -> Tuple[np.ndarray, np.
     return np.array(augmented_images), labels
 
 
-def convert_to_dataloader(data: Tuple[np.ndarray, np.ndarray], batch_size: int=32, transform: transforms.Compose=None, use_aug: bool=False) -> DataLoader:
+def convert_to_dataloader(data: Tuple[np.ndarray, np.ndarray], batch_size: int=32, transform: transforms.Compose=None, use_aug: bool=False, shuffle: bool=False) -> DataLoader:
     '''
     Converts the data to a format suitable for PyTorch.
 
@@ -132,6 +132,7 @@ def convert_to_dataloader(data: Tuple[np.ndarray, np.ndarray], batch_size: int=3
         batch_size (int): Size of the batches for the DataLoader.
         transform (transforms.Compose): Transformations to be applied to the images.
         use_aug (bool): Whether to apply data augmentation.
+        shuffle (bool): Whether to shuffle the data.
 
     Returns:
         DataLoader: PyTorch DataLoader containing the images and labels.
@@ -150,7 +151,7 @@ def convert_to_dataloader(data: Tuple[np.ndarray, np.ndarray], batch_size: int=3
     labels_tensor = torch.tensor(labels, dtype=torch.long)
 
     dataset = TensorDataset(data_tensor, labels_tensor)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
     return dataloader
 

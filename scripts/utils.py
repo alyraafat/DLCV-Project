@@ -2,6 +2,8 @@ import numpy as np
 from typing import List, Tuple, Dict
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+import pickle as pkl
+
 
 def draw_barchart_labels(labels: np.ndarray, label_to_index: Dict[str, int]) -> None:
     """
@@ -111,3 +113,73 @@ def plot_feature_scatter(
 
     
 
+def save_model(model, filename: str) -> None:
+    """
+    Save the model to a file using pickle.
+
+    Args:
+        model: The model to save.
+        filename (str): The name of the file to save the model to.
+    """
+    with open(filename, 'wb') as f:
+        pkl.dump(model, f)
+
+
+def load_model(filename: str):
+    """
+    Load the model from a file using pickle.
+
+    Args:
+        filename (str): The name of the file to load the model from.
+
+    Returns:
+        The loaded model.
+    """
+    with open(filename, 'rb') as f:
+        model = pkl.load(f)
+    return model
+
+
+def plot_predictions(
+    images: List,
+    true_labels: List[int],
+    pred_labels: List[int],
+    index_to_label: Dict[int, str],
+    num_images: int = 16,
+    nrow: int = 4,
+    mean: List[float] = None,
+    std: List[float] = None,
+):
+    """
+    Plot a grid of images with predicted vs true labels, coloring the title green if correct, red if wrong.
+
+    Args:
+        images (List[np.ndarray]): List of images (H, W, C).
+        true_labels (List[int]): List of true label indices.
+        pred_labels (List[int]): List of predicted label indices.
+        index_to_label (dict): Mapping from index to label name.
+        num_images (int): How many images to plot.
+        nrow (int): Number of images per row.
+        mean (List[float], optional): Mean values for normalization.
+        std (List[float], optional): Standard deviation values for normalization.
+    """
+    if mean is not None and std is not None:
+        mean = np.array(mean)[None,None,:]
+        std  = np.array(std)[None,None,:]
+    num = min(len(images), num_images)
+    ncol = (num + nrow - 1) // nrow
+    plt.figure(figsize=(nrow * 3, ncol * 3))
+    for i in range(num):
+        ax = plt.subplot(ncol, nrow, i + 1)
+        img = images[i]           # H×W×C, but still normalized
+        if mean is not None and std is not None:
+            img = img * std + mean    # un-do Normalize
+            img = np.clip(img, 0, 1)  # ensure within [0..1]
+        plt.imshow(img)
+        correct = (true_labels[i] == pred_labels[i])
+        color = 'green' if correct else 'red'
+        title_text = f"P: {index_to_label[pred_labels[i]]} / T: {index_to_label[true_labels[i]]}"
+        ax.set_title(title_text, color=color, fontsize=8)
+        plt.axis('off')
+    plt.tight_layout()
+    plt.show()
