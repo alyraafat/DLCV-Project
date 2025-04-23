@@ -55,7 +55,7 @@ class FirstModel:
             # print(f"Downsized shape: {downsized.shape}")
             feature_vectors.append(downsized)
 
-        return np.array(feature_vectors)
+        return np.concatenate(feature_vectors, axis=0)
 
     def _fit_kmeans(self, features: np.ndarray, num_clusters: int = 4):
         '''
@@ -70,8 +70,9 @@ class FirstModel:
         '''
         Extracts features from images and fits KMeans.
         '''
-        features = self._extract_features(images)
-        self._fit_kmeans(features, num_clusters)
+        self.features = self._extract_features(images)
+        print(f"Extracted features shape: {self.features.shape}")
+        self._fit_kmeans(self.features, num_clusters)
 
     def predict(self, images: np.ndarray) -> np.ndarray:
         '''

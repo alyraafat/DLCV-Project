@@ -4,9 +4,9 @@ import numpy as np
 from typing import List, Tuple, Dict
 from sklearn.model_selection import train_test_split
 import torch
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset, Dataset
 from torchvision import transforms
-
+import random
 
 def data_reader(data_path: str) -> Tuple[List[np.ndarray], List[str]]:
     ''''
@@ -153,3 +153,70 @@ def convert_to_dataloader(data: Tuple[np.ndarray, np.ndarray], batch_size: int=3
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     return dataloader
+
+
+
+class AugmentedImageDataset(Dataset):
+    def __init__(
+        self,
+        images: List[np.ndarray],
+        labels: List[int],
+        transform=None,
+        augment: bool = False
+    ):
+        """
+        images: list of H×W×C numpy arrays (normalized to [0,1])
+        labels: list of ints
+        transform: optional callable to convert numpy array to tensor and normalize
+        augment: whether to apply random augmentations
+        """
+        self.images = images
+        self.labels = labels
+        self.transform = transform
+
+        if self.transform is None:
+            self.transform = transforms.Compose([
+                transforms.ToTensor(),
+            ])
+        
+        self.augment = augment
+
+    def __len__(self) -> int:
+        return len(self.images)
+
+    def __getitem__(self, idx: int) -> Tuple[np.ndarray, int]:
+        image = self.images[idx].copy()
+        label = self.labels[idx]
+        label = torch.tensor(label, dtype=torch.long)
+
+        if self.augment:
+            # Random brightness
+            if random.random() > 0.5:
+                factor = random.uniform(0.9, 1.1)
+                image = np.clip(image * factor, 0.0, 1.0)
+
+            # Horizontal flip
+            if random.random() > 0.5:
+                image = cv2.flip(image, 1)
+
+            # Vertical flip
+            if random.random() > 0.5:
+                image = cv2.flip(image, 0)
+
+            # Rotation
+            if random.random() > 0.5:
+                angle = random.randint(-15, 15)
+                h, w = image.shape[:2]
+                M = cv2.getRotationMatrix2D((w/2, h/2), angle, 1.0)
+                image = cv2.warpAffine(image, M, (w, h), borderMode=cv2.BORDER_REFLECT)
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label
+
+def convert_to_dataloader_optimized(data, batch_size=32, transform=None, use_aug=False, shuffle=True):
+    images, labels = data
+    dataset = AugmentedImageDataset(images, labels, transform=transform, augment=use_aug)
+    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+
