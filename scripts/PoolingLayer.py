@@ -16,7 +16,7 @@ class PoolingLayer:
         # return average value in the pool
         return np.mean(pool_data, axis=(0, 1))
     
-    def forward(self, input_data: np.ndarray) -> np.ndarray:
+    def _pool(self, input_data: np.ndarray) -> np.ndarray:
         '''
         Apply pooling operation over the input data.
         
@@ -44,6 +44,18 @@ class PoolingLayer:
                 output[h, w, :] = self.pool_fn(pool_region)
 
         return output
+    
+    def forward(self, input_data: np.ndarray) -> np.ndarray:
+        '''
+        Forward pass through the pooling layer.
+        
+        Args:
+            input_data (np.ndarray): Input feature map (H, W, C)
+        
+        Returns:
+            np.ndarray: Pooled output (H//pool_H, W//pool_W, C)
+        '''
+        return self._pool(input_data)
 
 
 # test poolinglayer
