@@ -12,7 +12,7 @@ class FirstModel:
     def __init__(self, 
                  conv_blocks: int = 3, 
                  num_filters: int = 5, 
-                 kernel_sizes: Tuple[int,int] = [(3, 3, 3), (3, 3, 5), (3, 3, 5)], 
+                 kernel_sizes: List[Tuple[int,int,int]] = [(3, 3, 3), (3, 3, 5), (3, 3, 5)], 
                  pool_size: Tuple[int,int] = (2, 2),
                  pooling_type: str = "MAX", 
                  use_predefined_filters: bool = True):

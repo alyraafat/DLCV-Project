@@ -77,24 +77,6 @@ def data_preperator(data: Tuple[List[np.ndarray], List[str]], image_size: Tuple[
         stratify=y_temp
     )
 
-    # def build_subset(idxs: List[int]) -> np.ndarray:
-    #     '''
-    #     Builds a subset of images based on the provided indices.
-
-    #     Args:
-    #         idxs (List[int]): List of indices to select images from.
-        
-    #     Returns:
-    #         np.ndarray: Array of images resized to the specified image size.
-    #     '''
-        
-    #     X = np.array([cv2.resize(images[i], image_size) / 255.0 for i in idxs], dtype=np.float32)
-    #     return X
-    
-    # X_train = build_subset(train_idx)
-    # X_val = build_subset(val_idx)
-    # X_test = build_subset(test_idx)
-
     train_path = np.array(train_path)
     val_path = np.array(val_path)
     test_path = np.array(test_path)
@@ -104,7 +86,82 @@ def data_preperator(data: Tuple[List[np.ndarray], List[str]], image_size: Tuple[
 
     return (train_path, y_train), (val_path, y_val), (test_path, y_test), label_to_index
     
+def data_reader2(data_path: str) -> Tuple[List[np.ndarray], List[str]]:
+    ''''
+    Reads images from the given directory and returns a list of images, and get the labels from the directory names.
+
+    Args:
+        data_path (str): Path to the directory containing images.
+    Returns:
+        List[np.ndarray]: List of images read from the directory.
+    '''
+    images, labels = [], []
+    for root, dirs, files in os.walk(data_path):
+        for file in files:
+            if file.endswith('.jpg') or file.endswith('.png'):
+                img_path = os.path.join(root, file)
+                image = cv2.imread(img_path)
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                images.append(image)
+                label = os.path.basename(root)
+                labels.append(label)
+    return images, labels
     
+
+
+def data_preperator2(data: Tuple[List[np.ndarray], List[str]], image_size: Tuple[int, int] = (512, 512)) -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Dict[str, int]]:
+    '''
+    Prepares the data for training by resizing images and converting labels to one-hot encoding.
+
+    Args:
+        data (Tuple[List[np.ndarray], List[str]]): Tuple containing a list of images and their corresponding labels.
+        image_size (Tuple[int, int]): Desired size for the images after resizing.
+
+    Returns:
+        Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Dict[str, int]]: 
+        Tuple containing training data, validation data, test data, and a mapping of labels to indices.
+    '''
+    images, labels = data
+    
+    unique_labels = sorted(list(set(labels)))
+    label_to_index = {label: index for index, label in enumerate(unique_labels)}
+    labels_encoded = np.array([label_to_index[label] for label in labels])
+    
+    idx = np.arange(len(images))
+    train_idx, temp_idx, y_train, y_temp = train_test_split(
+        idx, labels_encoded,
+        test_size=0.30,
+        random_state=42,
+        stratify=labels_encoded
+    )
+    val_idx, test_idx, y_val, y_test = train_test_split(
+        temp_idx, y_temp,
+        train_size=2/3,
+        random_state=42,
+        stratify=y_temp
+    )
+
+    def build_subset(idxs: List[int]) -> np.ndarray:
+        '''
+        Builds a subset of images based on the provided indices.
+
+        Args:
+            idxs (List[int]): List of indices to select images from.
+        
+        Returns:
+            np.ndarray: Array of images resized to the specified image size.
+        '''
+        
+        X = np.array([cv2.resize(images[i], image_size) / 255.0 for i in idxs], dtype=np.float32)
+        return X
+    
+    X_train = build_subset(train_idx)
+    X_val = build_subset(val_idx)
+    X_test = build_subset(test_idx)
+
+    return (X_train, y_train), (X_val, y_val), (X_test, y_test), label_to_index
+    
+        
    
 def data_augmentor(data: Tuple[np.ndarray, np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
     '''

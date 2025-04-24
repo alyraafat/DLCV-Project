@@ -14,13 +14,13 @@ class ConvLayer:
     #     self.kernel_size = kernel_size
     #     self.filters = np.random.randn(num_filters, *kernel_size) * 0.01  # Initialize filters with small random values
 
-    def __init__(self, num_filters: int, kernel_size: Tuple[int, int], filter_weights: List[np.ndarray] = None, fast_convolution: bool = True):
+    def __init__(self, num_filters: int, kernel_size: Tuple[int, int, int], filter_weights: List[np.ndarray] = None, fast_convolution: bool = True):
         '''
         Initializes a convolutional layer with the given number of filters, kernel size, and filter weights.
 
         Args:
             num_filters (int): Number of filters in the convolutional layer.
-            kernel_size (Tuple[int, int]): Size of the convolutional kernel.
+            kernel_size (Tuple[int, int, int]): Size of the convolutional kernel.
             filter_weights (List[np.ndarray]): Weights for the filters.
         '''
         self.num_filters = num_filters
@@ -32,13 +32,13 @@ class ConvLayer:
             assert len(filter_weights) == num_filters, "Number of filter weights must match the number of filters"
             self._set_weights(filter_weights)
 
-    def _random_init(self, num_filters: int, kernel_size: Tuple[int, int]):
+    def _random_init(self, num_filters: int, kernel_size: Tuple[int, int, int]):
         '''
         Initializes the filters with small random values.
         
         Args:
             num_filters (int): Number of filters.
-            kernel_size (Tuple[int, int]): Size of the convolutional kernel.
+            kernel_size (Tuple[int, int, int]): Size of the convolutional kernel.
         
         Returns:
             np.ndarray: Initialized filters.
