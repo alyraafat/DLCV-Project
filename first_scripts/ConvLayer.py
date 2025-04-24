@@ -14,7 +14,7 @@ class ConvLayer:
     #     self.kernel_size = kernel_size
     #     self.filters = np.random.randn(num_filters, *kernel_size) * 0.01  # Initialize filters with small random values
 
-    def __init__(self, num_filters: int, kernel_size: Tuple[int, int], filter_weights: List[np.ndarray] = None):
+    def __init__(self, num_filters: int, kernel_size: Tuple[int, int], filter_weights: List[np.ndarray] = None, fast_convolution: bool = True):
         '''
         Initializes a convolutional layer with the given number of filters, kernel size, and filter weights.
 
@@ -24,6 +24,7 @@ class ConvLayer:
             filter_weights (List[np.ndarray]): Weights for the filters.
         '''
         self.num_filters = num_filters
+        self.fast_convolution = fast_convolution
         self.kernel_size = kernel_size
         if filter_weights is None:
             self._random_init(num_filters, kernel_size)
@@ -79,7 +80,7 @@ class ConvLayer:
                     w_end = w_start + kernel_w
                     region = input_data[h_start:h_end, w_start:w_end, :]
                     # print(f"Region shape: {region.shape}, Filter shape: {self.filters[f].shape}")
-                    output[h, w, f] = np.sum(region * np.expand_dims(self.filters[f],axis=-1))
+                    output[h, w, f] = np.dot(region.flatten(), self.filters[f].flatten())
         return output
     
     def forward(self, input_data: np.ndarray) -> np.ndarray:
@@ -92,5 +93,40 @@ class ConvLayer:
         Returns:
             np.ndarray: Convolved output (H', W', num_filters).
         '''
-        output = self._convolve(input_data)
+        output = self._convolve(input_data) if not self.fast_convolution else self._convolve_fully_vectorized(input_data)
+        return output
+    
+    def _convolve_fully_vectorized(self, input_data: np.ndarray) -> np.ndarray:
+        '''
+        Fully vectorized convolution operation with no loops.
+        
+        Args:
+            input_data (np.ndarray): Input data (H, W, C).
+        
+        Returns:
+            np.ndarray: Convolved output (H', W', num_filters).
+        '''
+        input_h, input_w, channels = input_data.shape
+        kernel_h, kernel_w = self.filters.shape[1:3]
+        output_h = input_h - kernel_h + 1
+        output_w = input_w - kernel_w + 1
+        
+        # Create patches/windows for all positions in one go
+        patches = np.zeros((output_h, output_w, kernel_h, kernel_w, channels))
+        for h in range(kernel_h):
+            for w in range(kernel_w):
+                patches[:, :, h, w, :] = input_data[h:h+output_h, w:w+output_w, :]
+        
+        # Reshape patches to combine spatial dimensions for easy matrix multiplication
+        patches_reshaped = patches.reshape(output_h * output_w, kernel_h * kernel_w * channels)
+        
+        # Reshape filters for matrix multiplication
+        filters_reshaped = self.filters.reshape(self.num_filters, -1)
+        
+        # Compute convolution for all positions and all filters at once
+        output = np.dot(patches_reshaped, filters_reshaped.T)
+        
+        # Reshape back to original spatial dimensions
+        output = output.reshape(output_h, output_w, self.num_filters)
+        
         return output
