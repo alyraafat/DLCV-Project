@@ -68,48 +68,48 @@ def plot_loss_acc(
 
 
 
-def plot_feature_scatter(
-    features: np.ndarray,
-    labels: np.ndarray,
-    n_components: int = 2,
-):
-    """
-    Plot PCA-reduced features in 2D or 3D based on n_components.
+# def plot_feature_scatter(
+#     features: np.ndarray,
+#     labels: np.ndarray,
+#     n_components: int = 2,
+# ):
+#     """
+#     Plot PCA-reduced features in 2D or 3D based on n_components.
 
-    Args:
-        features (np.ndarray): Feature matrix of shape (N, D).
-        labels (np.ndarray): Cluster labels of shape (N,).
-        n_components (int): 2 for 2D plot, 3 for 3D plot.
-    """
-    proj = PCA(n_components=n_components).fit_transform(features)
+#     Args:
+#         features (np.ndarray): Feature matrix of shape (N, D).
+#         labels (np.ndarray): Cluster labels of shape (N,).
+#         n_components (int): 2 for 2D plot, 3 for 3D plot.
+#     """
+#     proj = PCA(n_components=n_components).fit_transform(features)
 
-    figsize = (20,20)
+#     figsize = (20,20)
 
-    fig = plt.figure(figsize=figsize)
+#     fig = plt.figure(figsize=figsize)
 
-    if n_components == 2:
-        ax = fig.add_subplot(111)
-        scatter = ax.scatter(proj[:, 0], proj[:, 1], c=labels, cmap='tab10', s=20)
-        handles, legend_labels = scatter.legend_elements()
-        ax.legend(handles, legend_labels, title="Cluster")
-        ax.set_xlabel("PC1")
-        ax.set_ylabel("PC2")
-        ax.set_title("2D PCA Projection of Cluster Assignments")
+#     if n_components == 2:
+#         ax = fig.add_subplot(111)
+#         scatter = ax.scatter(proj[:, 0], proj[:, 1], c=labels, cmap='tab10', s=20)
+#         handles, legend_labels = scatter.legend_elements()
+#         ax.legend(handles, legend_labels, title="Cluster")
+#         ax.set_xlabel("PC1")
+#         ax.set_ylabel("PC2")
+#         ax.set_title("2D PCA Projection of Cluster Assignments")
 
-    elif n_components == 3:
-        ax = fig.add_subplot(111, projection='3d')
-        scatter = ax.scatter(proj[:, 0], proj[:, 1], proj[:, 2], c=labels, cmap='tab10', s=20)
-        handles, legend_labels = scatter.legend_elements()
-        ax.legend(handles, legend_labels, title="Cluster")
-        ax.set_xlabel("PC1")
-        ax.set_ylabel("PC2")
-        ax.set_zlabel("PC3")
-        ax.set_title("3D PCA Projection of Cluster Assignments")
+#     elif n_components == 3:
+#         ax = fig.add_subplot(111, projection='3d')
+#         scatter = ax.scatter(proj[:, 0], proj[:, 1], proj[:, 2], c=labels, cmap='tab10', s=20)
+#         handles, legend_labels = scatter.legend_elements()
+#         ax.legend(handles, legend_labels, title="Cluster")
+#         ax.set_xlabel("PC1")
+#         ax.set_ylabel("PC2")
+#         ax.set_zlabel("PC3")
+#         ax.set_title("3D PCA Projection of Cluster Assignments")
 
-    else:
-        raise ValueError("n_components must be 2 or 3 for plotting")
+#     else:
+#         raise ValueError("n_components must be 2 or 3 for plotting")
 
-    plt.show()
+#     plt.show()
 
     
 
