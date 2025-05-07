@@ -1,5 +1,5 @@
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from torch import optim
 from torch.nn import CrossEntropyLoss
 from torch import nn
@@ -7,6 +7,8 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from typing import List, Tuple, Dict
 from tqdm import tqdm
 import numpy as np
+from sklearn.model_selection import KFold, StratifiedKFold
+from torch.utils.data import Subset, DataLoader
 import torch.nn.functional as F
 
 def training(
@@ -71,13 +73,12 @@ def training(
                 acc=f"{correct/total:.4f}"
             )
 
+        print(f'Epoch [{epoch + 1}/{num_epochs}]')
+        train_metrics = evaluate(model, train_loader, criterion, device, prefix='train_')
         train_accuracy = correct / total
         train_losses.append(train_loss / len(train_loader))
-        train_accuracies.append(train_accuracy)
-        print(f'Epoch [{epoch + 1}/{num_epochs}]')
-        print(f"train_loss: {train_loss/total:.4f}, train_acc: {train_accuracy:.4f}")
-
-        # train_metrics = evaluate(model, train_loader, criterion, device, prefix='train_')
+        train_accuracies.append(train_accuracy)        
+        # print(f"train_loss: {train_loss/total:.4f}, train_acc: {train_accuracy:.4f}")
 
         val_metrics = evaluate(model, val_loader, criterion, device, prefix='val_')
         val_losses.append(val_metrics['loss'])
@@ -96,6 +97,7 @@ def evaluate(
     device: torch.device = None,
     average: str = 'macro',
     prefix: str = 'val_',
+    should_print: bool = True,
 ) -> Dict[str, float]:
     """
     Evaluate the model and return loss, accuracy, precision, recall, f1, and roc_auc.
@@ -139,14 +141,15 @@ def evaluate(
     f1 = f1_score(all_labels, all_preds, average=average, zero_division=0)
     roc_auc = roc_auc_score(all_labels, all_scores, multi_class='ovr', average=average)
 
-    print(
-        f"{prefix}Loss: {avg_loss:.4f}  "
-        f"{prefix}Acc: {accuracy:.4f}  "
-        f"{prefix}Prec: {precision:.4f}  "
-        f"{prefix}Rec: {recall:.4f}  "
-        f"{prefix}F1: {f1:.4f}  "
-        f"{prefix}ROC-AUC: {roc_auc:.4f}"
-    )
+    if should_print:
+        print(
+            f"{prefix}Loss: {avg_loss:.4f}  "
+            f"{prefix}Acc: {accuracy:.4f}  "
+            f"{prefix}Prec: {precision:.4f}  "
+            f"{prefix}Rec: {recall:.4f}  "
+            f"{prefix}F1: {f1:.4f}  "
+            f"{prefix}ROC-AUC: {roc_auc:.4f}"
+        )
 
     return {
         'loss':      avg_loss,
@@ -203,3 +206,85 @@ def predict(
     return images_list, true_list, pred_list
 
 
+
+def cross_validate(
+    train_ds: Dataset,
+    model_fn: callable,
+    k: int = 4,
+    stratified: bool = False,
+    num_epochs: int = 10,
+    batch_size: int = 32,
+    num_workers: int = 4,
+    lr: float = 1e-3,
+    random_state: int = 42,
+) -> Tuple[List[List[float]], List[List[float]], List[List[float]], List[List[float]], nn.Module]:
+    """
+    Perform K-fold (or Stratified K-fold) cross-validation on `train_ds`.
+    
+    Args:
+        train_ds        : a torch.utils.data.Dataset containing all your training samples.
+        model_fn        : a callable with zero args that returns a fresh nn.Module.
+        k               : number of folds (>=4).
+        stratified      : if True, use StratifiedKFold to preserve class ratios.
+        num_epochs      : epochs per fold.
+        batch_size      : batch size.
+        num_workers     : dataloader num_workers.
+        lr              : learning rate for Adam.
+        random_state    : seed for shuffling.
+    
+    Returns:
+        Tuple[List[List[float]], List[List[float]], List[List[float]], List[List[float]]]:
+            - fold_train_losses: list of training losses for each fold.
+            - fold_val_losses: list of validation losses for each fold.
+            - fold_train_accuracies: list of training accuracies for each fold.
+            - fold_val_accuracies: list of validation accuracies for each fold.
+            - best_model: the best model from all folds.
+    """
+    if stratified:
+        labels = [s[1] for s in train_ds]
+        splitter = StratifiedKFold(n_splits=k, shuffle=True, random_state=random_state)
+        splits = splitter.split(np.zeros(len(labels)), labels)
+    else:
+        splitter = KFold(n_splits=k, shuffle=True, random_state=random_state)
+        splits = splitter.split(train_ds)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    fold_train_losses = []
+    fold_val_losses = []
+    fold_train_accuracies = []
+    fold_val_accuracies = []
+    fold_last_val_accuracies = 0
+    best_acc = 0.0
+    best_model = None
+
+    for fold, (train_idx, val_idx) in enumerate(splits, 1):
+        print(f"\n--- Fold {fold}/{k} ---")
+        train_sub   = Subset(train_ds, train_idx)
+        val_sub     = Subset(train_ds, val_idx)
+        train_loader = DataLoader(train_sub, batch_size=batch_size, shuffle=True,  num_workers=num_workers)
+        val_loader   = DataLoader(val_sub,   batch_size=batch_size, shuffle=False, num_workers=num_workers)
+
+        model     = model_fn().to(device)
+        criterion = torch.nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+        train_losses, val_losses, train_accuracies, val_accuracies = training(
+            model, train_loader, val_loader, criterion, optimizer, num_epochs
+        )
+
+        fold_train_losses.append(train_losses)
+        fold_val_losses.append(val_losses)
+        fold_train_accuracies.append(train_accuracies)
+        fold_val_accuracies.append(val_accuracies)
+
+        fold_acc = val_accuracies[-1]
+        print(f"Fold {fold} val accuracy: {fold_acc:.4f}")
+        fold_last_val_accuracies += fold_acc
+        if fold_acc > best_acc:
+            best_acc = fold_acc
+            best_model = model
+
+    print(f"\nBest fold validation accuracy: {best_acc:.4f}")
+    avg_acc = fold_last_val_accuracies / k
+    print(f"\nAverage validation accuracy over {k} folds: {avg_acc:.4f}")
+    return fold_train_losses, fold_val_losses, fold_train_accuracies, fold_val_accuracies, best_model
