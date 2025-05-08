@@ -36,6 +36,15 @@ class KMeans:
         labels = self._assign_clusters(X)
         return labels 
         
+    def predict_soft(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
+        '''
+        Predict the soft cluster labels for the input features
+        
+        Params:
+          - X: Input features (numpy array or pandas DataFrame)
+        '''
+        labels = self._assign_soft_clusters(X)
+        return labels
     
     def _random_init(self, X: np.ndarray) -> np.ndarray:
         """
@@ -73,7 +82,18 @@ class KMeans:
             new_centroids[i] = np.mean(X[labels == i], axis=0) # Update the centroid of the cluster as the mean of the input features assigned to it
         return new_centroids
 
-        
+    def _assign_soft_clusters(self, X: np.ndarray) -> np.ndarray:
+        """
+        Assign the input features to the closest cluster using soft clustering
+
+        Params:
+          - X: Input features (numpy array)
+        """
+        new_labels = np.zeros((X.shape[0], self.n_clusters), dtype=float) 
+        for i in range(X.shape[0]): 
+            new_labels[i] = np.exp(-np.linalg.norm(X[i] - self.centroids, axis=1)) # Assign the input feature to the closest cluster, based on the Euclidean distance
+        return new_labels / np.sum(new_labels, axis=1, keepdims=True) # Normalize the labels to sum to 1
+      
 
 
         
