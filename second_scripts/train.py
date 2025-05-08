@@ -4,7 +4,7 @@ from torch import optim
 from torch.nn import CrossEntropyLoss
 from torch import nn
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Iterator, Sequence
 from tqdm import tqdm
 import numpy as np
 from sklearn.model_selection import KFold, StratifiedKFold
@@ -211,7 +211,6 @@ def cross_validate(
     train_ds: Dataset,
     model_fn: callable,
     k: int = 4,
-    stratified: bool = False,
     num_epochs: int = 10,
     batch_size: int = 32,
     num_workers: int = 4,
@@ -225,7 +224,6 @@ def cross_validate(
         train_ds        : a torch.utils.data.Dataset containing all your training samples.
         model_fn        : a callable with zero args that returns a fresh nn.Module.
         k               : number of folds (>=4).
-        stratified      : if True, use StratifiedKFold to preserve class ratios.
         num_epochs      : epochs per fold.
         batch_size      : batch size.
         num_workers     : dataloader num_workers.
@@ -240,13 +238,8 @@ def cross_validate(
             - fold_val_accuracies: list of validation accuracies for each fold.
             - best_model: the best model from all folds.
     """
-    if stratified:
-        labels = [s[1] for s in train_ds]
-        splitter = StratifiedKFold(n_splits=k, shuffle=True, random_state=random_state)
-        splits = splitter.split(np.zeros(len(labels)), labels)
-    else:
-        splitter = KFold(n_splits=k, shuffle=True, random_state=random_state)
-        splits = splitter.split(train_ds)
+
+    splits = kfold_indices(len(train_ds), k, random_state=random_state)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     fold_train_losses = []
@@ -266,7 +259,7 @@ def cross_validate(
 
         model     = model_fn().to(device)
         criterion = torch.nn.CrossEntropyLoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
         train_losses, val_losses, train_accuracies, val_accuracies = training(
             model, train_loader, val_loader, criterion, optimizer, num_epochs
@@ -288,3 +281,29 @@ def cross_validate(
     avg_acc = fold_last_val_accuracies / k
     print(f"\nAverage validation accuracy over {k} folds: {avg_acc:.4f}")
     return fold_train_losses, fold_val_losses, fold_train_accuracies, fold_val_accuracies, best_model
+
+def kfold_indices(
+    n_samples: int, 
+    k: int, 
+    random_state: int = 42
+) -> Iterator[Tuple[List[int], List[int]]]:
+    """
+    Yield train/val index splits for standard K-fold.
+    """
+    rng = np.random.RandomState(random_state)
+    indices = np.arange(n_samples)
+
+    base_size = n_samples // k
+    sizes = [base_size + (1 if i < (n_samples % k) else 0) for i in range(k)]
+    print(f"Fold sizes: {sizes}")
+
+    folds = []
+    start = 0
+    for size in sizes:
+        folds.append(indices[start:start+size])
+        start += size
+
+    for i in range(k):
+        val_idx = folds[k-i-1].tolist()
+        train_idx = np.hstack([folds[j] for j in range(k) if j != k-i-1]).tolist()
+        yield train_idx, val_idx
